@@ -3,11 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.etfs import router as etfs_router
 from app.api.investigations import router as investigations_router
 from app.api.anomaly import router as anomaly_router
+from app.api.risk import router as risk_router
 
-app = FastAPI(
-    title="ETF Risk Attribution & Event Intelligence Platform",
-    version="0.1.0",
-)
+app = FastAPI(title="ETF Risk Attribution & Event Intelligence Platform", version="0.1.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,12 +18,11 @@ app.add_middleware(
 app.include_router(etfs_router)
 app.include_router(investigations_router)
 app.include_router(anomaly_router)
-
+app.include_router(risk_router)
 
 @app.get("/")
 def root():
     return {"name": "ETF Risk Intelligence Platform", "version": "0.1.0"}
-
 
 @app.get("/health")
 def health():
