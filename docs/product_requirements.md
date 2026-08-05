@@ -185,3 +185,15 @@ Measured on 20-30 hand-labeled historical cases.
 This project is an educational analytical tool. It does not provide investment
 advice or execute financial transactions. Event associations are evidence-based
 hypotheses and should not be interpreted as proven causal relationships.
+
+---
+
+## 15. Risk decomposition methodology (Phase 6)
+
+- **Regression window:** 60 trading days (matches anomaly detection window for consistency)
+- **Minimum observations:** 40 (same as anomaly engine)
+- **Refit frequency:** Daily, using data strictly through t-1 (no look-ahead bias)
+- **Missing data handling:** Drop dates with missing market/sector/ETF returns from the regression window; do not interpolate
+- **Standardization:** Returns are NOT standardized — raw daily returns are used directly, since the regression coefficients (betas) are interpretable in their natural units (% return per % market return)
+- **Market proxy:** SPY for all three ETFs (broad market baseline)
+- **Sector proxy:** QQQ for QQQ and SMH (SMH nested under QQQ per Phase 1 hierarchy); SPY has no separate sector factor (it IS the market)
