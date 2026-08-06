@@ -6,6 +6,7 @@ from app.api.anomaly import router as anomaly_router
 from app.api.risk import router as risk_router
 from app.api.filings import router as filings_router
 from app.api.macro import router as macro_router
+from app.api.entities import router as entities_router
 
 app = FastAPI(title="ETF Risk Attribution & Event Intelligence Platform", version="0.1.0")
 
@@ -23,6 +24,7 @@ app.include_router(anomaly_router)
 app.include_router(risk_router)
 app.include_router(filings_router)
 app.include_router(macro_router)
+app.include_router(entities_router)
 
 @app.get("/")
 def root():

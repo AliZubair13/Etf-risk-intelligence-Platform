@@ -6,3 +6,5 @@ from app.models.attribution_result import AttributionResult
 from app.models.anomaly_result import AnomalyResult
 from app.models.filing import Filing
 from app.models.macro_observation import MacroObservation
+from app.models.filing_embedding import FilingEmbedding
+from app.models.event_entity import EventEntity
