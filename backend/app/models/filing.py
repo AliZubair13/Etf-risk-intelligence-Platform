@@ -20,13 +20,19 @@ class Filing(Base):
     cleaned_text = Column(Text, nullable=True)
     text_length = Column(String(20), nullable=True)
 
-    # Phase 9 additions
-    event_category = Column(String(30), nullable=True)  # earnings, guidance, regulation, etc.
-    sentiment_label = Column(String(10), nullable=True)  # positive, negative, neutral
-    sentiment_score = Column(Numeric(6, 4), nullable=True)  # -1 to 1
-    content_hash = Column(String(64), nullable=True)  # for dedup
-    embedding_generated = Column(String(5), default="false")  # "true"/"false" flag
-    processing_status = Column(String(20), default="pending")  # pending, processed, failed
+    event_category = Column(String(30), nullable=True)
+    sentiment_label = Column(String(10), nullable=True)
+    sentiment_score = Column(Numeric(6, 4), nullable=True)
+
+    # Phase 11 additions - full FinBERT probability distribution
+    sentiment_positive_prob = Column(Numeric(6, 4), nullable=True)
+    sentiment_negative_prob = Column(Numeric(6, 4), nullable=True)
+    sentiment_neutral_prob = Column(Numeric(6, 4), nullable=True)
+    sentiment_model = Column(String(30), nullable=True)  # "vader" or "finbert"
+
+    content_hash = Column(String(64), nullable=True)
+    embedding_generated = Column(String(5), default="false")
+    processing_status = Column(String(20), default="pending")
 
     ingested_at = Column(DateTime(timezone=True), server_default=func.now())
 
