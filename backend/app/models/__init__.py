@@ -8,3 +8,4 @@ from app.models.filing import Filing
 from app.models.macro_observation import MacroObservation
 from app.models.filing_embedding import FilingEmbedding
 from app.models.event_entity import EventEntity
+from app.models.investigation import Investigation
