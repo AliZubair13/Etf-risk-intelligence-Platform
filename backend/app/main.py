@@ -9,6 +9,8 @@ from app.api.macro import router as macro_router
 from app.api.entities import router as entities_router
 from app.api.event_ranking import router as event_ranking_router
 from app.api.investigation_orchestration import router as orchestration_router
+from app.api.feedback import router as feedback_router
+from app.api.model_training import router as model_training_router
 
 app = FastAPI(title="ETF Risk Attribution & Event Intelligence Platform", version="0.1.0")
 
@@ -29,6 +31,8 @@ app.include_router(macro_router)
 app.include_router(entities_router)
 app.include_router(event_ranking_router)
 app.include_router(orchestration_router)
+app.include_router(feedback_router)
+app.include_router(model_training_router)
 
 @app.get("/")
 def root():
