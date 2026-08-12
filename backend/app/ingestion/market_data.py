@@ -20,25 +20,22 @@ def get_all_tickers(db: Session) -> List[str]:
     return all_tickers
 
 def fetch_prices_for_ticker(ticker: str, start: str, end: str) -> pd.DataFrame:
-    for attempt in range(3):
+    for attempt in range(5):
         try:
-            df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False)
+            df = yf.download(ticker, start=start, end=end, auto_adjust=True, progress=False, timeout=20)
             if df.empty:
-                logger.warning(f"No data returned for {ticker}")
-                return pd.DataFrame()
+                logger.warning(f"Empty response for {ticker}, attempt {attempt+1}")
+                time.sleep(3 * (attempt + 1))
+                continue
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
             df = df.reset_index()
-            df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
             return df
         except Exception as e:
             logger.warning(f"Attempt {attempt+1} failed for {ticker}: {e}")
-            time.sleep(2 ** attempt)
-    logger.error(f"All attempts failed for {ticker}")
+            time.sleep(3 * (attempt + 1))
+    logger.error(f"All attempts failed for {ticker} - likely rate limited")
     return pd.DataFrame()
-
-def calculate_daily_returns(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.sort_values("Date").copy()
-    df["daily_return"] = df["Close"].pct_change()
-    return df
 
 def get_latest_stored_date(ticker: str, db: Session):
     result = (
@@ -49,26 +46,39 @@ def get_latest_stored_date(ticker: str, db: Session):
     )
     return result[0] if result else None
 
+def get_previous_close(ticker: str, before_date, db: Session):
+    """Look up the most recent stored close price before a given date."""
+    result = (
+        db.query(DailyPrice.adjusted_close)
+        .filter(DailyPrice.ticker == ticker, DailyPrice.trade_date < before_date)
+        .order_by(DailyPrice.trade_date.desc())
+        .first()
+    )
+    return float(result[0]) if result else None
+
 def ingest_prices_for_ticker(ticker: str, db: Session, start: str = START_DATE):
     latest = get_latest_stored_date(ticker, db)
     if latest:
         fetch_start = (latest + timedelta(days=1)).strftime("%Y-%m-%d")
-        logger.info(f"{ticker}: incremental update from {fetch_start}")
+        logger.info(f"{ticker}: incremental from {fetch_start}")
     else:
         fetch_start = start
         logger.info(f"{ticker}: full backfill from {fetch_start}")
 
-    end_date = date.today().strftime("%Y-%m-%d")
+    end_date = (date.today() + timedelta(days=1)).strftime("%Y-%m-%d")
     if fetch_start >= end_date:
-        logger.info(f"{ticker}: already up to date")
+        logger.info(f"{ticker}: up to date")
         return 0
 
     df = fetch_prices_for_ticker(ticker, fetch_start, end_date)
     if df.empty:
         return 0
 
-    df = calculate_daily_returns(df)
+    df = df.sort_values("Date").copy()
     inserted = 0
+
+    # Track previous close across rows, seeded from DB if this is a single/few-row batch
+    prev_close = get_previous_close(ticker, df.iloc[0]["Date"].date(), db)
 
     for _, row in df.iterrows():
         trade_date = row["Date"].date() if hasattr(row["Date"], "date") else row["Date"]
@@ -76,31 +86,32 @@ def ingest_prices_for_ticker(ticker: str, db: Session, start: str = START_DATE):
 
         exists = db.query(DailyPrice).filter(DailyPrice.id == price_id).first()
         if exists:
+            prev_close = float(row["Close"]) if pd.notna(row["Close"]) else prev_close
             continue
 
         adj_close = float(row["Close"]) if pd.notna(row["Close"]) else None
         if adj_close is None or adj_close <= 0:
-            logger.warning(f"Invalid close for {ticker} on {trade_date}: {adj_close}")
             continue
 
-        daily_return = float(row["daily_return"]) if pd.notna(row.get("daily_return")) else None
-        if daily_return is not None and abs(daily_return) > 0.5:
-            logger.warning(f"Suspicious return {daily_return:.2%} for {ticker} on {trade_date}")
+        daily_return = None
+        if prev_close is not None and prev_close != 0:
+            daily_return = (adj_close / prev_close) - 1
 
         price = DailyPrice(
             id=price_id,
             ticker=ticker,
             trade_date=trade_date,
-            open=float(row.get("Open")) if pd.notna(row.get("Open")) else None,
-            high=float(row.get("High")) if pd.notna(row.get("High")) else None,
-            low=float(row.get("Low")) if pd.notna(row.get("Low")) else None,
-            close=float(row.get("Close")) if pd.notna(row.get("Close")) else None,
+            open=float(row["Open"]) if pd.notna(row.get("Open")) else None,
+            high=float(row["High"]) if pd.notna(row.get("High")) else None,
+            low=float(row["Low"]) if pd.notna(row.get("Low")) else None,
+            close=float(row["Close"]) if pd.notna(row.get("Close")) else None,
             adjusted_close=adj_close,
-            volume=int(row.get("Volume")) if pd.notna(row.get("Volume")) else None,
+            volume=int(row["Volume"]) if pd.notna(row.get("Volume")) else None,
             daily_return=daily_return,
         )
         db.add(price)
         inserted += 1
+        prev_close = adj_close
 
     db.commit()
     logger.info(f"{ticker}: inserted {inserted} rows")
@@ -109,10 +120,24 @@ def ingest_prices_for_ticker(ticker: str, db: Session, start: str = START_DATE):
 def ingest_all_prices(db: Session):
     tickers = get_all_tickers(db)
     total = 0
+    failed_tickers = []
     for i, ticker in enumerate(tickers):
         logger.info(f"Processing {i+1}/{len(tickers)}: {ticker}")
         count = ingest_prices_for_ticker(ticker, db)
+        if count == 0:
+            latest = get_latest_stored_date(ticker, db)
+            if not latest or latest < date.today() - timedelta(days=3):
+                failed_tickers.append(ticker)
         total += count
-        time.sleep(0.5)
+        time.sleep(1.5)
+
+    if failed_tickers:
+        logger.warning(f"Retrying {len(failed_tickers)} likely rate-limited tickers: {failed_tickers}")
+        time.sleep(10)
+        for ticker in failed_tickers:
+            count = ingest_prices_for_ticker(ticker, db)
+            total += count
+            time.sleep(2)
+
     logger.info(f"Total rows inserted: {total}")
     return total

@@ -22,13 +22,13 @@ def render_selector():
     with col2:
         selected_date = st.date_input(
             "Analysis date",
-            value=date(2025, 1, 27),  # default to a known interesting date
+            value=date(2025, 1, 27),
             min_value=date(2022, 2, 1),
-            max_value=date.today() - timedelta(days=1),
+            max_value=date.today(),
         )
 
     with col3:
-        st.write("")  # spacing
+        st.write("")
         st.write("")
         run_clicked = st.button("🚀 Run Investigation", type="primary", use_container_width=True)
 

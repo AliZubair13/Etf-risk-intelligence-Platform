@@ -12,7 +12,13 @@ from app.api.investigation_orchestration import router as orchestration_router
 from app.api.feedback import router as feedback_router
 from app.api.model_training import router as model_training_router
 
+from app.scheduler import start_scheduler
+
 app = FastAPI(title="ETF Risk Attribution & Event Intelligence Platform", version="0.1.0")
+
+@app.on_event("startup")
+def startup_event():
+    start_scheduler()
 
 app.add_middleware(
     CORSMiddleware,
