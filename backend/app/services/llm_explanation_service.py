@@ -35,20 +35,20 @@ def generate_explanation(investigation: dict) -> dict:
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,  # low temperature - we want grounded, not creative
-            max_tokens=700,
+            max_tokens=1400,
         )
         generated_text = response.choices[0].message.content
 
         return {
             "generated_text": generated_text,
             "payload_used": payload,
-            "model": "llama-3.3-70b-versatile",
+            "model": "openai/gpt-oss-120b",
             "error": None,
         }
     except Exception as e:
@@ -56,6 +56,6 @@ def generate_explanation(investigation: dict) -> dict:
         return {
             "generated_text": None,
             "payload_used": payload,
-            "model": "llama-3.3-70b-versatile",
+            "model": "openai/gpt-oss-120b",
             "error": str(e),
         }

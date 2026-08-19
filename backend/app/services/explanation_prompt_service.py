@@ -14,6 +14,7 @@ STRICT RULES - you must follow all of these:
 5. NEVER claim proven causation. Use language like "may have contributed to", "is associated with", "coincided with" - not "caused" or "was the reason for".
 6. Always mention the unexplained residual return and what it represents (do not present it as fully understood).
 7. Clearly distinguish CALCULATIONS (attribution numbers, factor decomposition - which are exact) from INTERPRETATION (which events are relevant - which is a ranked estimate).
+8. ONLY state numbers that appear EXACTLY in the provided payload. Do NOT compute, derive, or calculate any new numbers - no ratios, no percentages-of-totals, no decimal-to-percentage conversions. If the payload gives a value as 0.0856, refer to it as 0.0856, NOT as "8.56%". Do not say things like "the residual is 90% of the move" - just state the residual value as given.
 
 OUTPUT FORMAT - produce exactly these sections, each with a one-line header:
 ## Movement Summary
